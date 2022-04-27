@@ -36,3 +36,4 @@ mod resource;
 mod schema_utils;
 pub mod system;
 mod test;
+pub mod test_manager;
