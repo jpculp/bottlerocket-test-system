@@ -72,10 +72,7 @@ impl Client for DefaultClient {
     {
         let test_data = self.client.get(&self.name).await.context(K8sSnafu)?;
 
-        let raw_config = match test_data.spec.agent.configuration {
-            Some(serde_map) => serde_map,
-            None => Default::default(),
-        };
+        let raw_config = test_data.spec.agent.configuration.unwrap_or_default();
 
         let resource_client = ResourceClient::new()
             .await
