@@ -13,7 +13,7 @@ futures = "0.3"
 log = "0.4"
 testsys-model = { path = "../model" }
 serde_json = "1"
-terminal_size = "0.2"
+terminal_size = "0.3"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "fs"] }
 
 [dev-dependencies]
