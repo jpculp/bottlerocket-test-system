@@ -1,13 +1,3 @@
-use aws_sdk_ec2::types::SdkError;
-use aws_sdk_ecs::error::{
-    DeleteServiceError, DeregisterTaskDefinitionError, DescribeClustersError,
-    DescribeTaskDefinitionError, DescribeTasksError, ListTaskDefinitionsError,
-    RegisterTaskDefinitionError, RunTaskError, UpdateServiceError,
-};
-use aws_sdk_ssm::error::{
-    CreateDocumentError, DescribeInstanceInformationError, ListCommandInvocationsError,
-    SendCommandError, UpdateDocumentError,
-};
 use snafu::Snafu;
 use std::num::TryFromIntError;
 use test_agent::error::InfoClientError;
@@ -42,7 +32,9 @@ pub enum Error {
 
     #[snafu(display("SSM Create Document failed: {}", source))]
     SsmCreateDocument {
-        source: SdkError<CreateDocumentError>,
+        source: aws_sdk_ssm::error::SdkError<
+            aws_sdk_ssm::operation::create_document::CreateDocumentError,
+        >,
     },
 
     #[snafu(display("SSM Describe Document failed: {}", message))]
@@ -50,15 +42,22 @@ pub enum Error {
 
     #[snafu(display("SSM Update Document failed: {}", source))]
     SsmUpdateDocument {
-        source: SdkError<UpdateDocumentError>,
+        source: aws_sdk_ssm::error::SdkError<
+            aws_sdk_ssm::operation::update_document::UpdateDocumentError,
+        >,
     },
 
     #[snafu(display("SSM Send Command failed: {}", source))]
-    SsmSendCommand { source: SdkError<SendCommandError> },
+    SsmSendCommand {
+        source:
+            aws_sdk_ssm::error::SdkError<aws_sdk_ssm::operation::send_command::SendCommandError>,
+    },
 
     #[snafu(display("SSM List Command Invocations failed: {}", source))]
     SsmListCommandInvocations {
-        source: SdkError<ListCommandInvocationsError>,
+        source: aws_sdk_ssm::error::SdkError<
+            aws_sdk_ssm::operation::list_command_invocations::ListCommandInvocationsError,
+        >,
     },
 
     #[snafu(display("No command ID in SSM send command response"))]
@@ -78,7 +77,9 @@ pub enum Error {
 
     #[snafu(display("SSM Describe Instance Information failed: {}", source))]
     SsmDescribeInstanceInfo {
-        source: SdkError<DescribeInstanceInformationError>,
+        source: aws_sdk_ssm::error::SdkError<
+            aws_sdk_ssm::operation::describe_instance_information::DescribeInstanceInformationError,
+        >,
     },
 
     #[snafu(display("Missing instance information from describe-instance-info output"))]
@@ -111,45 +112,63 @@ pub enum Error {
 
     #[snafu(display("Unable to create task definition: {}", source))]
     TaskDefinitionCreation {
-        source: SdkError<RegisterTaskDefinitionError>,
+        source: aws_sdk_ecs::error::SdkError<
+            aws_sdk_ecs::operation::register_task_definition::RegisterTaskDefinitionError,
+        >,
     },
 
     #[snafu(display("Unable to describe task definition: {}", source))]
     TaskDefinitionDescribe {
-        source: SdkError<DescribeTaskDefinitionError>,
+        source: aws_sdk_ecs::error::SdkError<
+            aws_sdk_ecs::operation::describe_task_definition::DescribeTaskDefinitionError,
+        >,
     },
 
     #[snafu(display("Unable to list task definitions: {}", source))]
     TaskDefinitionList {
-        source: SdkError<ListTaskDefinitionsError>,
+        source: aws_sdk_ecs::error::SdkError<
+            aws_sdk_ecs::operation::list_task_definitions::ListTaskDefinitionsError,
+        >,
     },
 
     #[snafu(display("Unable to run task: {}", source))]
-    TaskRunCreation { source: SdkError<RunTaskError> },
+    TaskRunCreation {
+        source: aws_sdk_ecs::error::SdkError<aws_sdk_ecs::operation::run_task::RunTaskError>,
+    },
 
     #[snafu(display("Unable to update the service: {}", source))]
     TaskServiceUpdate {
-        source: SdkError<UpdateServiceError>,
+        source: aws_sdk_ecs::error::SdkError<
+            aws_sdk_ecs::operation::update_service::UpdateServiceError,
+        >,
     },
 
     #[snafu(display("Unable to delete service: {}", source))]
     TaskServiceDelete {
-        source: SdkError<DeleteServiceError>,
+        source: aws_sdk_ecs::error::SdkError<
+            aws_sdk_ecs::operation::delete_service::DeleteServiceError,
+        >,
     },
 
     #[snafu(display("Unable to get task description: {}", source))]
     TaskDescribe {
-        source: SdkError<DescribeTasksError>,
+        source: aws_sdk_ecs::error::SdkError<
+            aws_sdk_ecs::operation::describe_tasks::DescribeTasksError,
+        >,
     },
 
     #[snafu(display("Unable to get cluster description: {}", source))]
     ClusterDescribe {
-        source: SdkError<DescribeClustersError>,
+        source: aws_sdk_ecs::error::SdkError<
+            aws_sdk_ecs::operation::describe_clusters::DescribeClustersError,
+        >,
     },
 
     #[snafu(display("Unable to deregister task description: {}", source))]
     DeregisterTask {
-        source: SdkError<DeregisterTaskDefinitionError>,
+        source: aws_sdk_ecs::error::SdkError<
+            aws_sdk_ecs::operation::deregister_task_definition::DeregisterTaskDefinitionError,
+        >,
     },
 
     #[snafu(display("No task running tasks in cluster"))]

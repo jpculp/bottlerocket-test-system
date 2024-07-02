@@ -2,7 +2,8 @@ mod error;
 mod job_builder;
 
 pub(crate) use crate::job::error::{JobError, JobResult};
-use aws_sdk_cloudwatchlogs::model::InputLogEvent;
+use aws_config::BehaviorVersion;
+use aws_sdk_cloudwatchlogs::types::InputLogEvent;
 pub(crate) use job_builder::{JobBuilder, JobType};
 use k8s_openapi::api::batch::v1::Job;
 use k8s_openapi::api::core::v1::Pod;
@@ -176,7 +177,10 @@ pub(crate) async fn archive_logs(k8s_client: kube::Client, job_name: &str) -> Jo
     if !archive_logs {
         return Ok(());
     }
-    let config = aws_config::from_env().load().await;
+    #[allow(deprecated)] // We'll bump BehaviorVersion the next time we bump tough.
+    let config = aws_config::defaults(BehaviorVersion::v2023_11_09())
+        .load()
+        .await;
     let client = aws_sdk_cloudwatchlogs::Client::new(&config);
 
     match client
@@ -230,7 +234,8 @@ pub(crate) async fn archive_logs(k8s_client: kube::Client, job_name: &str) -> Jo
                         .try_into()
                         .unwrap_or_default(),
                 )
-                .build(),
+                .build()
+                .context(error::BuildLogEventSnafu)?,
         )
         .send()
         .await

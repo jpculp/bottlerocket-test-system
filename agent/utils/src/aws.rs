@@ -4,9 +4,9 @@ use agent_common::secrets::SecretsReader;
 use aws_config::default_provider::credentials::default_provider;
 use aws_config::retry::RetryConfig;
 use aws_config::sts::AssumeRoleProvider;
+use aws_config::{BehaviorVersion, Region};
 use aws_credential_types::provider::SharedCredentialsProvider;
 use aws_credential_types::Credentials;
-use aws_sdk_sts::Region;
 use aws_smithy_types::retry::RetryMode;
 use aws_types::SdkConfig;
 use log::info;
@@ -34,7 +34,8 @@ pub async fn aws_config(
         region
     );
 
-    let mut config_loader = aws_config::from_env().retry_config(
+    #[allow(deprecated)] // We'll bump BehaviorVersion the next time we bump tough.
+    let mut config_loader = aws_config::defaults(BehaviorVersion::v2023_11_09()).retry_config(
         RetryConfig::standard()
             .with_retry_mode(RetryMode::Adaptive)
             .with_max_attempts(15),
@@ -66,7 +67,8 @@ pub async fn aws_config(
                     assume_role_session_duration.unwrap_or(DEFAULT_ASSUME_ROLE_SESSION_DURATION)
                         as u64,
                 ))
-                .build(base_provider.clone()),
+                .build()
+                .await,
         )),
         None => config_loader.credentials_provider(base_provider),
     };
@@ -99,21 +101,9 @@ pub async fn aws_config(
             .context(error::CredentialsMissingSnafu { role_arn })?
             .clone();
         set_environment_variables(
-            &String::from(
-                credentials
-                    .access_key_id()
-                    .context(error::CredentialsMissingSnafu { role_arn })?,
-            ),
-            &String::from(
-                credentials
-                    .secret_access_key()
-                    .context(error::CredentialsMissingSnafu { role_arn })?,
-            ),
-            &Some(String::from(
-                credentials
-                    .session_token()
-                    .context(error::CredentialsMissingSnafu { role_arn })?,
-            )),
+            &String::from(credentials.access_key_id()),
+            &String::from(credentials.secret_access_key()),
+            &Some(String::from(credentials.session_token())),
         )
     }
     Ok(config)

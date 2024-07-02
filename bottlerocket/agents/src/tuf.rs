@@ -33,7 +33,7 @@ pub fn tuf_repo_urls(
     Ok((metadata_url, targets_url))
 }
 
-pub fn download_target(
+pub async fn download_target(
     resources: Resources,
     metadata_url: &Url,
     targets_url: &Url,
@@ -43,7 +43,7 @@ pub fn download_target(
     // Need to download root.json. This is an unsafe operation but in the context of testing it's fine.
     let root_path = download_root(resources, metadata_url, outdir)?;
     let repository = RepositoryLoader::new(
-        File::open(root_path).context(
+        &tokio::fs::read(root_path).await.context(
             resources,
             "Failed to open root.json file for loading TUF repository",
         )?,
@@ -52,6 +52,7 @@ pub fn download_target(
     )
     .expiration_enforcement(ExpirationEnforcement::Unsafe)
     .load()
+    .await
     .context(resources, "Failed to load TUF repository")?;
 
     repository
@@ -60,6 +61,7 @@ pub fn download_target(
             outdir,
             Prefix::None,
         )
+        .await
         .context(
             resources,
             format!("Failed to download target file '{}'", target_name),

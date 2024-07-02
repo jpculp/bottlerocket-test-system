@@ -7,7 +7,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 testsys-model = { version = "0.0.13", path = "../../model" }
-snafu = "0.7"
+snafu = "0.8"
 
 [dev-dependencies]
 tempfile = "3"

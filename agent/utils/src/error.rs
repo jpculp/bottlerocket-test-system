@@ -1,7 +1,3 @@
-use aws_sdk_iam::error::{AttachRolePolicyError, CreateRoleError, GetRoleError};
-use aws_sdk_ssm::error::{CreateActivationError, DescribeInstanceInformationError};
-use aws_sdk_sts::error::AssumeRoleError;
-use aws_sdk_sts::types::SdkError;
 use snafu::Snafu;
 use std::string::FromUtf8Error;
 
@@ -11,7 +7,7 @@ use std::string::FromUtf8Error;
 pub enum Error {
     AssumeRole {
         role_arn: String,
-        source: SdkError<AssumeRoleError>,
+        source: aws_sdk_sts::error::SdkError<aws_sdk_sts::operation::assume_role::AssumeRoleError>,
     },
 
     #[snafu(display(
@@ -23,18 +19,32 @@ pub enum Error {
     AttachRolePolicy {
         role_name: String,
         policy_arn: String,
-        source: SdkError<AttachRolePolicyError>,
+        source: aws_sdk_iam::error::SdkError<
+            aws_sdk_iam::operation::attach_role_policy::AttachRolePolicyError,
+        >,
     },
 
     #[snafu(display("Failed to decode base64 blob: {}", source))]
     Base64Decode { source: base64::DecodeError },
+
+    #[snafu(display("Unable to build instance information string filter: {}", source))]
+    BuildInstanceInformationStringFilter {
+        source: aws_sdk_ssm::error::BuildError,
+    },
+
+    #[snafu(display("Unable to build tag: {}", source))]
+    BuildTag {
+        source: aws_sdk_ssm::error::BuildError,
+    },
 
     #[snafu(display("Could not convert '{}' secret to string: {}", what, source))]
     Conversion { what: String, source: FromUtf8Error },
 
     #[snafu(display("Failed to send create SSM command: {}", source))]
     CreateSsmActivation {
-        source: SdkError<CreateActivationError>,
+        source: aws_sdk_ssm::error::SdkError<
+            aws_sdk_ssm::operation::create_activation::CreateActivationError,
+        >,
     },
 
     #[snafu(display(
@@ -46,7 +56,7 @@ pub enum Error {
     CreateRole {
         role_name: String,
         role_policy: String,
-        source: SdkError<CreateRoleError>,
+        source: aws_sdk_iam::error::SdkError<aws_sdk_iam::operation::create_role::CreateRoleError>,
     },
 
     #[snafu(display("Credentials were missing for assumed role '{}'", role_arn))]
@@ -57,13 +67,15 @@ pub enum Error {
 
     #[snafu(display("Unable to get managed instance information: {}", source))]
     GetManagedInstanceInfo {
-        source: SdkError<DescribeInstanceInformationError>,
+        source: aws_sdk_ssm::error::SdkError<
+            aws_sdk_ssm::operation::describe_instance_information::DescribeInstanceInformationError,
+        >,
     },
 
     #[snafu(display("Unable to get SSM role '{}': {}", role_name, source))]
     GetSSMRole {
         role_name: String,
-        source: SdkError<GetRoleError>,
+        source: aws_sdk_iam::error::SdkError<aws_sdk_iam::operation::get_role::GetRoleError>,
     },
 
     #[snafu(display("{} was missing from {}", what, from))]

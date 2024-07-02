@@ -10,14 +10,19 @@ pub(crate) enum JobError {
     #[snafu(display("Job already exists: {}", source))]
     AlreadyExists { source: kube::Error },
 
+    #[snafu(display("Unable to build event log event: {}", source))]
+    BuildLogEvent {
+        source: aws_sdk_cloudwatchlogs::error::BuildError,
+    },
+
     #[snafu(display("Unable to create job: {}", source))]
     Create { source: kube::Error },
 
     #[snafu(display("Unable to create log event '{}': {:?}", log_event, source))]
     CreateLogEvent {
         log_event: String,
-        source: aws_sdk_cloudwatchlogs::types::SdkError<
-            aws_sdk_cloudwatchlogs::error::PutLogEventsError,
+        source: aws_sdk_cloudwatchlogs::error::SdkError<
+            aws_sdk_cloudwatchlogs::operation::put_log_events::PutLogEventsError,
         >,
     },
 
@@ -27,8 +32,8 @@ pub(crate) enum JobError {
     #[snafu(display("Unable to create log stream '{}': {:?}", log_stream, source))]
     CreateLogStream {
         log_stream: String,
-        source: aws_sdk_cloudwatchlogs::types::SdkError<
-            aws_sdk_cloudwatchlogs::error::CreateLogStreamError,
+        source: aws_sdk_cloudwatchlogs::error::SdkError<
+            aws_sdk_cloudwatchlogs::operation::create_log_stream::CreateLogStreamError,
         >,
     },
 
