@@ -28,7 +28,7 @@ use std::time::Duration;
 use testsys_model::{Configuration, SecretName};
 use tokio::fs::read_to_string;
 
-const KARPENTER_VERSION: &str = "0.37.0";
+const KARPENTER_VERSION: &str = "1.0.5";
 const CLUSTER_KUBECONFIG: &str = "/local/cluster.kubeconfig";
 const PROVISIONER_YAML: &str = "/local/provisioner.yaml";
 const TAINTED_NODEGROUP_NAME: &str = "tainted-nodegroup";
@@ -517,7 +517,7 @@ impl Create for Ec2KarpenterCreator {
         };
 
         let provisioner = format!(
-            r#"apiVersion: karpenter.sh/v1beta1
+            r#"apiVersion: karpenter.sh/v1
 kind: NodePool
 metadata:
     name: default
@@ -526,6 +526,8 @@ spec:
     spec:
         nodeClassRef:
             name: my-provider
+            group: karpenter.k8s.aws
+            kind: EC2NodeClass
         requirements:
         - key: kubernetes.io/arch
           operator: In
@@ -535,7 +537,7 @@ spec:
           values: ['on-demand']
 {}
 ---
-apiVersion: karpenter.k8s.aws/v1beta1
+apiVersion: karpenter.k8s.aws/v1
 kind: EC2NodeClass
 metadata:
     name: my-provider
