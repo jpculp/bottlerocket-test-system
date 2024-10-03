@@ -33,20 +33,3 @@ jobs:
         env:
           TESTSYS_SELFTEST_SKIP_IMAGE_BUILDS: true
           TESTSYS_SELFTEST_THREADS: 1
-  images:
-    runs-on:
-      group: bottlerocket
-      labels: bottlerocket_ubuntu-latest_16-core
-    steps:
-      - uses: actions/checkout@v4
-      # Build local tools container in case we are working on a new tools release
-      - run: make tools
-      - run: make images
-  license-check:
-    # A small machine is OK for this independent job.
-    runs-on: ubuntu-latest
-    # If we already checked the PR, we don't need to check the actual push
-    if: ${{ github.event_name == 'pull_request' }}
-    steps:
-      - uses: actions/checkout@v4
-      - run: make cargo-deny

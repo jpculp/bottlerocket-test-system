@@ -1,0 +1,24 @@
+name: Licenses
+on:
+  pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - '.github/dependabot.yml'
+      - 'bottlerocket/tests/workload/**'
+      - '**.md'
+  push:
+    paths-ignore:
+      - 'docs/**'
+      - '.github/dependabot.yml'
+      - 'bottlerocket/tests/workload/**'
+      - '**.md'
+    branches: [develop]
+jobs:
+  cargo-deny:
+    # A small machine is OK for this independent job.
+    runs-on: ubuntu-latest
+    # If we already checked the PR, we don't need to check the actual push
+    if: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: make cargo-deny

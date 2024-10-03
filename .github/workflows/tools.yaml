@@ -8,10 +8,12 @@ on:
       - 'tools/**'
     branches: [develop]
 jobs:
-  build:
+  images:
     runs-on:
       group: bottlerocket
-      labels: bottlerocket_ubuntu-latest_8-core
+      labels: bottlerocket_ubuntu-latest_16-core
     steps:
       - uses: actions/checkout@v4
+      # Build local tools container in case we are working on a new tools release
       - run: make tools
+      - run: make images

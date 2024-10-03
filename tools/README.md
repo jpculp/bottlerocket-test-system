@@ -15,7 +15,7 @@ From the root of the git repository (i.e. `..`), run `make tools -e TOOLS_IMAGE=
 If you have a built version, whether it is local or you have pushed it, you can use it when building the rest of the images in this git repo:
 
 ```shell
-make eks-resource-agent -e TOOLS_IMAGE=TOOLS_IMAGE=my.repo.com/my-bottlerocket-test-tools:v0.1.0
+make eks-resource-agent -e TOOLS_IMAGE=my.repo.com/my-bottlerocket-test-tools:v0.1.0
 ```
 
 ## Default
