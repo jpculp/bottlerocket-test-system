@@ -469,7 +469,18 @@ ignore-waves = true
 api-server = "{}"
 cluster-name = "{}"
 cluster-certificate = "{}"
-cluster-dns-ip = "{}""#,
+cluster-dns-ip = "{}"
+
+[settings.kubernetes.credential-providers.ecr-credential-provider]
+enabled = true
+cache-duration = "30m"
+image-patterns = [
+  "*.dkr.ecr.us-east-2.amazonaws.com",
+  "*.dkr.ecr.us-west-2.amazonaws.com"
+]
+
+[settings.network]
+no-proxy = ["localhost", "127.0.0.1"]"#,
         endpoint
             .as_ref()
             .context(memo, "Server endpoint is required for eks clusters.")?,
