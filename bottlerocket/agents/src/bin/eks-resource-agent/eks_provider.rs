@@ -20,16 +20,20 @@ use resource_agent::provider::{
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::env::temp_dir;
-use std::fs::write;
 use std::path::Path;
 use std::process::Command;
 use testsys_model::{Configuration, SecretName};
+
+use std::fs::File;
+use std::io::Write;
+use strum_macros::EnumString;
 
 /// The default region for the cluster.
 const DEFAULT_REGION: &str = "us-west-2";
 /// The default cluster version.
 const DEFAULT_VERSION: &str = "1.24";
 const TEST_CLUSTER_CONFIG_PATH: &str = "/local/eksctl_config.yaml";
+const CLUSTER_CONFIG_PATH: &str = "/local/cluster_config.yaml";
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -45,10 +49,10 @@ pub struct ProductionMemo {
     /// Whether the agent was instructed to create the cluster or not.
     pub creation_policy: Option<CreationPolicy>,
 
-    // The region the cluster is in.
+    /// The region the cluster is in.
     pub region: Option<String>,
 
-    // The role arn that is being assumed.
+    /// The role arn that is being assumed.
     pub assume_role: Option<String>,
 
     pub provisioning_started: bool,
@@ -115,7 +119,6 @@ impl AwsClients {
         }
     }
 }
-
 enum ClusterConfig {
     Args {
         cluster_name: String,
@@ -127,6 +130,169 @@ enum ClusterConfig {
         cluster_name: String,
         region: String,
     },
+}
+
+#[derive(Serialize, Debug, EnumString)]
+enum IPFamily {
+    IPv6,
+    IPv4,
+}
+
+/// Configuration for setting up an EKS cluster using eksctl yaml file.
+///
+/// # Fields:
+/// - `api_version`: Specifies the version of the EKS configuration API.
+/// - `kind`: Indicates the type of the configuration, typically "ClusterConfig".
+/// - `metadata`: Metadata about the cluster for instance name, region, and version.
+/// - `availability_zones`: List of availability zones where cluster should be deployed.
+/// - `kubernetes_network_config`: Configuration for the Kubernetes network: IPv6 or IPv4.
+/// - `addons`: List of EKS addons to be enabled on the cluster.
+/// - `iam`: IAM configuration, especially for OIDC.
+/// - `managed_node_groups`: List of managed node groups for the cluster.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct EksctlYamlConfig {
+    /// Version of the EKS configuration API
+    api_version: String,
+    /// Type of the configuration, typically "ClusterConfig".
+    kind: String,
+    /// Metadata about the cluster for instance name, region, and version.
+    #[serde(rename = "metadata")]
+    eksctl_metadata: EksctlMetadata,
+    /// List of availability zones where cluster should be deployed.
+    availability_zones: Vec<String>,
+    /// Configuration for the Kubernetes network: IPv6 or IPv4.
+    kubernetes_network_config: KubernetesNetworkConfig,
+    /// List of EKS addons to be enabled on the cluster.
+    addons: Vec<Addon>,
+    /// IAM configuration, especially for OIDC.
+    iam: IAMConfig,
+    /// List of managed node groups for the cluster.
+    managed_node_groups: Vec<ManagedNodeGroup>,
+}
+
+/// Metadata for configuration of the EKS cluster.
+///
+/// # Fields:
+/// - `name`: The name of the cluster.
+/// - `region`: AWS region where the cluster will be deployed.
+/// - `version`: The Kubernetes version will be used.
+#[derive(Serialize)]
+struct EksctlMetadata {
+    /// Name of the cluster
+    name: String,
+    /// AWS region where the cluster will be deployed.
+    region: String,
+    /// The Kubernetes version will be used.
+    version: String,
+}
+
+/// Kubernetes network setup.
+///
+/// # Fields:
+/// - `ip_family`: Specifies whether IPv4 or IPv6.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct KubernetesNetworkConfig {
+    /// Specifies whether IPv4 or IPv6.
+    ip_family: IPFamily,
+}
+
+/// Addon that can be configured for the EKS cluster.
+///
+/// # Fields:
+/// - `name`: The name of the addon.
+/// - `version`: The version of the addon.
+#[derive(Serialize)]
+struct Addon {
+    /// Name of the addon.
+    name: String,
+    /// Version of the addon.
+    version: String,
+}
+
+/// IAM configuration.
+///
+/// # Fields:
+/// - `withOIDC`: Flag to enable OIDC.
+#[derive(Serialize)]
+#[allow(non_snake_case)]
+struct IAMConfig {
+    /// Flag to enable OIDC
+    withOIDC: bool,
+}
+
+/// Managed node group in the EKS cluster.
+///
+/// # Fields:
+/// - `name`: The name of the managed node group.
+#[derive(Serialize)]
+struct ManagedNodeGroup {
+    /// Name of the managed node group
+    name: String,
+}
+
+#[allow(clippy::unwrap_or_default)]
+fn create_yaml(
+    cluster_name: &str,
+    region: &str,
+    version: &str,
+    zones: &Option<Vec<String>>,
+) -> ProviderResult<()> {
+    let set_ip_family = if cluster_name.ends_with("ipv6") {
+        IPFamily::IPv6
+    } else {
+        IPFamily::IPv4
+    };
+
+    let cluster = EksctlYamlConfig {
+        api_version: "eksctl.io/v1alpha5".to_string(),
+        kind: "ClusterConfig".to_string(),
+        eksctl_metadata: EksctlMetadata {
+            name: cluster_name.to_string(),
+            region: region.to_string(),
+            version: version.to_string(),
+        },
+        availability_zones: zones.clone().unwrap_or_else(Vec::new),
+        kubernetes_network_config: KubernetesNetworkConfig {
+            ip_family: set_ip_family,
+        },
+        addons: vec![
+            Addon {
+                name: "vpc-cni".to_string(),
+                version: "latest".to_string(),
+            },
+            Addon {
+                name: "coredns".to_string(),
+                version: "latest".to_string(),
+            },
+            Addon {
+                name: "kube-proxy".to_string(),
+                version: "latest".to_string(),
+            },
+        ],
+        iam: IAMConfig { withOIDC: true },
+        managed_node_groups: vec![ManagedNodeGroup {
+            name: "mng-1".to_string(),
+        }],
+    };
+
+    let yaml =
+        serde_yaml::to_string(&cluster).context(Resources::Clear, "Failed to serialize YAML")?;
+
+    let mut file = File::create(CLUSTER_CONFIG_PATH)
+        .context(Resources::Clear, "Failed to create yaml file")?;
+
+    file.write_all(yaml.as_bytes()).context(
+        Resources::Clear,
+        format!(
+            "Unable to write eksctl configuration to '{}'",
+            CLUSTER_CONFIG_PATH
+        ),
+    )?;
+    info!("YAML file has been created at CLUSTER_CONFIG_PATH");
+
+    Ok(())
 }
 
 impl ClusterConfig {
@@ -143,15 +309,6 @@ impl ClusterConfig {
                         "Unable to convert decoded config to string.",
                     )?)
                     .context(Resources::Clear, "Unable to serialize eksctl config.")?;
-
-                let config_path = Path::new(TEST_CLUSTER_CONFIG_PATH);
-                write(config_path, decoded_config).context(
-                    Resources::Clear,
-                    format!(
-                        "Unable to write eksctl configuration to '{}'",
-                        config_path.display()
-                    ),
-                )?;
 
                 let (cluster_name, region) = config
                     .get("metadata")
@@ -195,7 +352,7 @@ impl ClusterConfig {
 
     /// Create a cluster with the given config.
     pub fn create_cluster(&self) -> ProviderResult<()> {
-        let status = match self {
+        let cluster_config_path = match self {
             Self::Args {
                 cluster_name,
                 region,
@@ -206,41 +363,32 @@ impl ClusterConfig {
                     .as_ref()
                     .map(|version| version.major_minor_without_v())
                     .unwrap_or_else(|| DEFAULT_VERSION.to_string());
-                trace!("Calling eksctl create cluster");
-                let status = Command::new("eksctl")
-                    .args([
-                        "create",
-                        "cluster",
-                        "-r",
-                        region,
-                        "--zones",
-                        &zones.clone().unwrap_or_default().join(","),
-                        "--version",
-                        &version_arg,
-                        "-n",
-                        cluster_name,
-                        "--nodes",
-                        "0",
-                        "--managed=false",
-                    ])
-                    .status()
-                    .context(Resources::Clear, "Failed create cluster")?;
-                trace!("eksctl create cluster has completed");
-                status
+
+                create_yaml(cluster_name, region, &version_arg, zones)?;
+                trace!(
+                    "assigned create cluster yaml file path is {}",
+                    CLUSTER_CONFIG_PATH
+                );
+                CLUSTER_CONFIG_PATH
             }
             Self::ConfigPath {
                 cluster_name: _,
                 region: _,
             } => {
-                trace!("Calling eksctl create cluster with config file");
-                let status = Command::new("eksctl")
-                    .args(["create", "cluster", "-f", TEST_CLUSTER_CONFIG_PATH])
-                    .status()
-                    .context(Resources::Clear, "Failed create cluster")?;
-                trace!("eksctl create cluster has completed");
-                status
+                trace!(
+                    "assigned create cluster yaml file path is {}",
+                    TEST_CLUSTER_CONFIG_PATH
+                );
+                TEST_CLUSTER_CONFIG_PATH
             }
         };
+
+        trace!("Calling eksctl create cluster with config file");
+        let status = Command::new("eksctl")
+            .args(["create", "cluster", "-f", cluster_config_path])
+            .status()
+            .context(Resources::Clear, "Failed create cluster")?;
+        trace!("eksctl create cluster has completed");
         if !status.success() {
             return Err(ProviderError::new_with_context(
                 Resources::Clear,

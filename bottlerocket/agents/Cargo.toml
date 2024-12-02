@@ -41,3 +41,5 @@ toml = "0.5"
 tough = { version = "0.17", features = ["http"] }
 url = "2"
 uuid = { version = "1", default-features = false, features = ["serde", "v4"] }
+strum = { version = "0.26", features = ["derive"] }
+strum_macros = "0.26" 
