@@ -387,7 +387,7 @@ async fn create_vsphere_k8s_cluster(
         // Same reasons as above, we don't need to check the status here
         Command::new("govc")
             .args(["tags.create", "-c", "eksdRelease"])
-            .arg(&format!("eksdRelease:{}", eksd_ver_str))
+            .arg(format!("eksdRelease:{}", eksd_ver_str))
             .output()
             .context(*resources, "Failed to launch govc process")?;
         // Tag the VM template with the EKSD tag

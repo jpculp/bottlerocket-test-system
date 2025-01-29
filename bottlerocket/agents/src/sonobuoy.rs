@@ -78,7 +78,7 @@ where
         .arg("--plugin")
         .arg(&sonobuoy_config.plugin)
         .arg("--mode")
-        .arg(&sonobuoy_config.mode.to_string())
+        .arg(sonobuoy_config.mode.to_string())
         .args(k8s_image_arg)
         .args(e2e_repo_arg)
         .args(sonobuoy_image_arg)
