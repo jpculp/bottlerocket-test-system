@@ -15,7 +15,7 @@ log = "0.4"
 testsys-model = { version = "0.0.14", path = "../../model" }
 snafu = "0.8"
 serde_json = "1"
-env_logger = "0.10"
+env_logger = "0.11"
 serde_plain = "1"
 serde = "1"
 tar = "0.4"
