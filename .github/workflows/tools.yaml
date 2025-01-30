@@ -2,9 +2,15 @@ name: Tools
 on:
   pull_request:
     paths:
+      - 'Makefile'
+      - 'clarify.toml'
+      - 'deny.toml'
       - 'tools/**'
   push:
     paths:
+      - 'Makefile'
+      - 'clarify.toml'
+      - 'deny.toml'
       - 'tools/**'
     branches: [develop]
 jobs:
